@@ -4,3 +4,4 @@
 **/tmp
 **/.env
 **/.idea
+**/__pycache__/
