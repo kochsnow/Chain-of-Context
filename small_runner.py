@@ -3,6 +3,7 @@ import os
 import pathlib
 import random
 import warnings
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import torch
 import openai
@@ -26,18 +27,40 @@ oai_args = OAIArguments()
 gen_args = GenerationArguments()
 args = HfArgumentParser([runner_args, hf_args, oai_args, gen_args]).parse_args()
 
-args.output_dir = pathlib.Path(os.getcwd()).parent / args.output_dir
+task_name = "proofwriter-neurosymbolic-2shot"
+
+args.max_length_generation = 3000
+args.temperature = 0.8
+args.openai_api_env_keys = ['OPENAI_API_KEY', 'OPENAI_API_KEY2', 'OPENAI_API_KEY3', 'OPENAI_API_KEY4']
+args.model = 'gpt-3.5-turbo-16k-0613'  # 'gpt-3.5-turbo'  # hard coded model here
+args.allow_code_execution = True
+
+# todo remove debug suffix from here later
+run_id = f"{args.model}_${task_name}_debug"
+args.save_generations_raw = True
+args.save_generations_prc = True
+args.save_references = True
+args.save_results = True
+args.save_context = True
+args.save_results_path = f'{run_id}_results.json'
+args.save_context_path = f'{run_id}_context.json'
+args.save_references_path = f'{run_id}_references.json'
+args.save_generations_raw_path = f'{run_id}_generations_raw.json'
+args.save_generations_prc_path = f'{run_id}_generations_prc.json'
+args.output_dir = 'outputs'
+
+args.output_dir = pathlib.Path(os.getcwd()) / args.output_dir
 args.save_generations_raw_path = args.output_dir / args.save_generations_raw_path
 args.save_generations_prc_path = args.output_dir / args.save_generations_prc_path
 args.save_references_path = args.output_dir / args.save_references_path
 args.save_results_path = args.output_dir / args.save_results_path
+args.save_context_path = args.output_dir / args.save_context_path
 args.save_generations_raw_path.parent.mkdir(parents=True, exist_ok=True)
 args.save_generations_prc_path.parent.mkdir(parents=True, exist_ok=True)
 args.save_references_path.parent.mkdir(parents=True, exist_ok=True)
 args.save_results_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-task_name = "proofwriter-neurosymbolic-2shot"
 my_parent_task = get_task(task_name)
 
 
@@ -138,38 +161,37 @@ class CustomOAIEvaluator(OAIEvaluator):
         prompts = [task.get_prompt(dataset[i]) for i in range(n_tasks)]
         stops = [task.stop_words for _ in range(n_tasks)]
 
-        # todo add this fancy stuff back later
-        # with ThreadPoolExecutor() as executor:
-        #     res = executor.map(self.get_completion, prompts, stops)
-
-        # todo instead of choosing over the sample use all of them
-        initial_generations_raw = [self.get_completion(prompt, stop) for prompt, stop in zip(prompts, stops)]
+        with ThreadPoolExecutor() as executor:
+            generations_raw = list(executor.map(self.get_completion, prompts, stops))
 
         # todo change n_sample of here to 1
-        generation_prompts = [task.get_extra_context_prompt(random.choice(generation)) for generation in initial_generations_raw]
-        generations_raw = [self.get_completion(prompt, stop) for prompt, stop in zip(generation_prompts, stops)]
-        if self.args.postprocess:
-            generations_prc = [
-                [
-                    task.postprocess_generation(
-                        generations_raw[i][j], i, completion_only=True
-                    )
-                    for j in range(self.args.n_samples)
-                ]
-                for i in range(n_tasks)
-            ]
-        else:
-            generations_prc = generations_raw
-        references = [task.get_reference(dataset[i]) for i in range(n_tasks)]
-        return generations_prc, generations_raw, references
+        context_prompt = [task.get_extra_context_prompt(random.choice(generation)) for generation in generations_raw]
 
+        with ThreadPoolExecutor() as executor:
+            contexts = list(executor.map(self.get_completion, context_prompt, stops))
+
+        # todo bad code. doesn't work for sample bigger than 1
+        generations_prc = [
+            [
+                task.postprocess_generation(
+                    contexts[i][j] + '\n' + generations_raw[i][j], i, completion_only=True
+                )
+                for j in range(self.args.n_samples)
+            ]
+            for i in range(n_tasks)
+        ]
+        references = [task.get_reference(dataset[i]) for i in range(n_tasks)]
+        return generations_prc, generations_raw, contexts, references
+
+    def generate_raw(self, task, doc):
+        pass
 
     # uses task instead of task_name
     def evaluate(self, task):
         if task.requires_execution and not self.allow_code_execution:
             raise ValueError(_WARNING)
 
-        generations_prc, generations_raw, references = self.generate_text(task)
+        generations_prc, generations_raw, contexts, references = self.generate_text(task)
         if len(generations_prc[0]) != self.args.n_samples:
             generations_prc = [l[: self.args.n_samples] for l in generations_prc]
             warnings.warn(
@@ -186,6 +208,10 @@ class CustomOAIEvaluator(OAIEvaluator):
                     with open(self.args.save_generations_prc_path, "w") as fp:
                         json.dump(generations_prc, fp)
                         print("processed generations were saved")
+                if self.args.save_context:
+                    with open(self.args.save_context_path, "w") as fp:
+                        json.dump(contexts, fp)
+                        print("references were saved")
                 if self.args.save_references:
                     with open(self.args.save_references_path, "w") as fp:
                         json.dump(references, fp)
@@ -198,37 +224,36 @@ class CustomOAIEvaluator(OAIEvaluator):
             return results
 
     # uncomment this if you don't have access to LLM or you want to manually debug...
-    # def get_completion(self, prompt, stop):
-    #     print("please query this and tell me the answer:")
-    #     print("stop words: ", stop)
-    #     print(prompt)
-    #     print("paste here and type end at the end:")
-    #     res = ""
-    #     while True:
-    #         s = input()
-    #         if s.strip() == "end":
-    #             break
-    #         elif s.strip():
-    #             res += s.strip() + "\n"
-    #     return [res] * self.args.n_samples  # copy instead of asking n times...
+    def make_request(self, prompt, stop):
+        print("please query this and tell me the answer:")
+        print("stop words: ", stop)
+        print(prompt)
+        return super(CustomOAIEvaluator, self).make_request(prompt, stop)
+
+        # print("paste here and type end at the end:")
+        # res = ""
+        # while True:
+        #     s = input()
+        #     if s.strip() == "end":
+        #         break
+        #     elif s.strip():
+        #         res += s.strip() + "\n"
+        # return [res] * self.args.n_samples  # copy instead of asking n times...
 
 
 if __name__ == "__main__":
-    args.max_length_generation = 4096
-    args.openai_api_env_keys = ['OPENAI_API_KEY']
-    args.model = 'gpt-3.5-turbo'  # hard coded model here
-    args.allow_code_execution = True
+    task = CustomSubTask()
+
     args.n_samples = 1
+    args.limit = 20  # hard coded so that we don't run all examples
 
     is_chat = True  # todo change this if you change model
-    args.limit = 1  # hard coded so that we don't run all examples
 
     # todo uncomment this for checking the comparison
     # task = my_parent_task
     # evaluator = OAIEvaluator(args, chat=is_chat)
     # result = evaluator.evaluate(task_name)
 
-    task = CustomSubTask()
     evaluator = CustomOAIEvaluator(args, chat=is_chat)
     result = evaluator.evaluate(task)
 
