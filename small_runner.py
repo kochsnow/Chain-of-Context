@@ -32,13 +32,13 @@ task_name = "proofwriter-neurosymbolic-2shot"
 args.task_name = task_name
 
 args.max_length_generation = 3000
-args.temperature = 0.8
+args.temperature = 0  # todo consider increasing the temperature?
 args.openai_api_env_keys = ['OPENAI_API_KEY', 'OPENAI_API_KEY2', 'OPENAI_API_KEY3', 'OPENAI_API_KEY4', 'OPENAI_API_KEY5', 'OPENAI_API_KEY6']
 args.model = 'gpt-3.5-turbo-16k-0613'  # 'gpt-3.5-turbo'  # hard coded model here
 args.allow_code_execution = True
 
 # todo remove debug suffix from here later
-run_id = f"{args.model}_${task_name}_debug_ates_new_prompt_2_"
+run_id = f"{args.model}_${task_name}_debug_ates_new_prompt_2_zero_temp_"
 args.save_generations_raw = True
 args.save_generations_prc = True
 args.save_references = True
