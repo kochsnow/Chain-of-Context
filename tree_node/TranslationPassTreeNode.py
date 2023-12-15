@@ -1,15 +1,17 @@
 import json
 import os
 
-from ContextPassTreeNode import ContextPassTreeNode
+from .ContextPassTreeNode import ContextPassTreeNode
 from llm.LLM import OAILLM
-from TreeNode import TreeNode
+from .TreeNode import TreeNode
 from eval.base import OWAFOLTask
 from settings import CACHE_DIR, OPENAI_API_ENV_KEYS, TOP_P, MAX_LENGTH_GENERATION, TEMPERATURE, \
     SYSTEM_CHAT_INSTRUCTION, TRANSLATION_PASS_N_SAMPLES, get_next_recent_query_counter, RECENT_QUERY_DIR
 from tree_node.datatypes import Translation, Sentence, RawPremiseAndConclusion
 
 import xml.etree.ElementTree as ET
+
+from .utils import parse_xml_from_string
 
 
 class TranslationPassTreeNode(TreeNode):
@@ -87,7 +89,7 @@ class TranslationPassTreeNode(TreeNode):
     def expand(self):
         self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
         for resp in self.response:
-            translation = Translation.from_xml(ET.fromstring(resp))
+            translation = Translation.from_xml(parse_xml_from_string(resp))
             self.children.append(
                 ContextPassTreeNode(
                     doc=self.doc, translation=translation, task_name=self.task_name, task=self.task,

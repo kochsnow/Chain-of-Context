@@ -1,16 +1,15 @@
 import json
 import os
 
-import xml.etree.ElementTree as ET
-
 from llm.LLM import OAILLM
-from TreeNode import TreeNode
+from .TreeNode import TreeNode
 from eval.base import OWAFOLTask
 from settings import CACHE_DIR, OPENAI_API_ENV_KEYS, TOP_P, MAX_LENGTH_GENERATION, TEMPERATURE, \
     SYSTEM_CHAT_INSTRUCTION, CONTEXT_PASS_N_SAMPLES, get_next_recent_query_counter, RECENT_QUERY_DIR
 from .ResultPassTreeNode import ResultTreeNode
 from .datatypes import Translation, AnnotatedTranslation, ContextSentence, Sentence, AnnotatedSentence, SentenceList, \
     AnnotatedSentenceList
+from .utils import parse_xml_from_string
 
 
 class ContextPassTreeNode(TreeNode):
@@ -53,7 +52,7 @@ class ContextPassTreeNode(TreeNode):
     def expand(self):
         self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
         for resp in self.response:
-            annotated_premises = AnnotatedSentenceList.from_xml(ET.fromstring(resp))
+            annotated_premises = AnnotatedSentenceList.from_xml(parse_xml_from_string(resp))
             annotated_translation = AnnotatedTranslation(annotated_premises=annotated_premises, conclusion=self.translation.conclusion)
             self.children.append(
                 ResultTreeNode(
@@ -76,10 +75,10 @@ Do not limit the amount of new premises generated in the output.
 Expressions should be adhere to the format of the Python NLTK package logic module. Here are a couple examples:
 """
 
-example_input_1 = SentenceList.from_xml(ET.fromstring("""
+example_input_1 = SentenceList.from_xml(parse_xml_from_string("""
 <SENTENCE>
-    PREMISE: When a person reads a book, that person gains knowledge.
-    FOL: all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge))
+    <PREMISE> When a person reads a book, that person gains knowledge. </PREMISE>
+    <FOL> all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge)) </FOL>
 </SENTENCE>
 <SENTENCE>
     <PREMISE> Harry read the book "Walden" by Henry. </PREMISE>
@@ -87,7 +86,7 @@ example_input_1 = SentenceList.from_xml(ET.fromstring("""
 </SENTENCE>
         """))
 
-example_output_1 = AnnotatedSentenceList.from_xml(ET.fromstring("""
+example_output_1 = AnnotatedSentenceList.from_xml(parse_xml_from_string("""
 <ANNOTATED_SENTENCE>
     <PREMISE> When a person reads a book, that person gains knowledge. </PREMISE>
     <FOL> all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge)) </FOL>

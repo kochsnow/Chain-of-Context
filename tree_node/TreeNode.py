@@ -25,11 +25,29 @@ class TreeNode(ABC):
         return f"{self.model}_{self.task_name}.json"
 
     def make_request_and_log(self, llm: LLM, prompt, stop):
+        print('making query')
         response = llm.get_completion(prompt=prompt, stop=stop)
-        filename = os.path.join(RECENT_QUERY_DIR, str(get_next_recent_query_counter()))
-        with open(filename, "w") as fp:
+        cnt = get_next_recent_query_counter()
+        filenamejson = os.path.join(RECENT_QUERY_DIR, str(cnt) + ".json")
+        filenametxt = os.path.join(RECENT_QUERY_DIR, str(cnt) + ".txt")
+        with open(filenamejson, "w") as fp:
             data = {"prompt": prompt, "stop": stop, "response": response}
             json.dump(data, fp)
+        with open(filenametxt, "w") as fp:
+            data = {"prompt": prompt, "stop": stop, "response": response}
+            fp.write("stop words:\n")
+            fp.write(str(stop))
+            fp.write('\n')
+            fp.write("-" * 40)
+            fp.write('\n')
+            fp.write("prompt:\n")
+            fp.write(str(prompt))
+            fp.write('\n')
+            fp.write("-" * 40)
+            fp.write('\n')
+            fp.write("response:\n")
+            fp.write(str(response))
+        print('finished query')
         return response
 
     def log(self, data):

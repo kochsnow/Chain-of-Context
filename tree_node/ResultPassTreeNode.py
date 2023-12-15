@@ -1,12 +1,7 @@
-from ContextPassTreeNode import ContextPassTreeNode
-from llm.LLM import OAILLM
-from TreeNode import TreeNode
+from .TreeNode import TreeNode
 from eval.base import OWAFOLTask
-from settings import CACHE_DIR, OPENAI_API_ENV_KEYS, TOP_P, MAX_LENGTH_GENERATION, TEMPERATURE, \
-    SYSTEM_CHAT_INSTRUCTION, TRANSLATION_PASS_N_SAMPLES, get_next_recent_query_counter, RECENT_QUERY_DIR
 from tree_node.datatypes import Translation, Sentence, RawPremiseAndConclusion, AnnotatedTranslation
 from .utils import evaluate_premise_conclusion
-import xml.etree.ElementTree as ET
 
 
 class ResultTreeNode(TreeNode):
