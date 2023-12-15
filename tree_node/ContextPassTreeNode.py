@@ -108,7 +108,6 @@ example_output_1 = AnnotatedSentenceList.from_xml(parse_xml_from_string("""
 """))
 
 
-# todo
 """
 <ANNOTATED_SENTENCE>
     <PREMISE> Heinrich Schmidt was a Nazi German politician. </PREMISE>
