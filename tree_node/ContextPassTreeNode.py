@@ -110,50 +110,39 @@ example_output_1 = AnnotatedSentenceList.from_xml(parse_xml_from_string("""
 
 # todo
 """
-<INPUT>
-    <SENTENCE>
-        PREMISE: Heinrich Schmidt was a Nazi German politician.
-        FOL: NaziGermanPolitician(HeinrichSchmidt)
-    </SENTENCE>
-</INPUT>
+<ANNOTATED_SENTENCE>
+    <PREMISE> Heinrich Schmidt was a Nazi German politician. </PREMISE>
+    <FOL> NaziGermanPolitician(HeinrichSchmidt) </FOL>
+</ANNOTATED_SENTENCE>
+<ANNOTATED_SENTENCE>
+    <CONTEXT_SENTENCE>
+        <CONTEXT> Heinrich Schmidt was a Nazi. </CONTEXT>
+        <FOL> Nazi(HeinrichSchmidt) </FOL>
+        <JUSTIFICATION> Because Heinrich Schmidt was a Nazi German politician, he must have been a Nazi. </JUSTIFICATION>
+    </CONTEXT_SENTENCE>
+    <CONTEXT_SENTENCE>
+        <CONTEXT> Heinrich Schmidt was German. </CONTEXT>
+        <FOL> German(HeinrichSchmidt) </FOL>
+        <JUSTIFICATION> Because Heinrich Schmidt was a Nazi German politician, he must have been German. </JUSTIFICATION>
+    </CONTEXT_SENTENCE>
+    <CONTEXT_SENTENCE>
+        <CONTEXT> Heinrich Schmidt was a Politician. </CONTEXT>
+        <FOL> Politician(HeinrichSchmidt) </FOL>
+        <JUSTIFICATION> Because Heinrich Schmidt was a Nazi German politician, he must have been a politician. </JUSTIFICATION>
+    </CONTEXT_SENTENCE>
+</ANNOTATED_SENTENCE>
 
-<OUTPUT>
-    <SENTENCE>
-        PREMISE: Heinrich Schmidt was a Nazi German politician.
-        FOL: NaziGermanPolitician(HeinrichSchmidt)
-        <CONTEXT_SENTENCE>
-            CONTEXT: Heinrich Schmidt was a Nazi.
-            FOL: Nazi(HeinrichSchmidt)
-            JUSTIFICATION: Because Heinrich Schmidt was a Nazi German politician, he must have been Nazi. 
-        </CONTEXT_SENTENCE>
-        <CONTEXT_SENTENCE>
-            CONTEXT: Heinrich Schmidt was a German.
-            FOL: German(HeinrichSchmidt)
-            JUSTIFICATION: Because Heinrich Schmidt was a Nazi German politician, he must have been German. 
-        </CONTEXT_SENTENCE>
-        <CONTEXT_SENTENCE>
-            CONTEXT: Heinrich Schmidt was a Politician.
-            FOL: Politician(HeinrichSchmidt)
-            JUSTIFICATION: Because Heinrich Schmidt was a Nazi German politician, he must have been a politician. 
-        </CONTEXT_SENTENCE>
-    </SENTENCE>
-</OUTPUT>
 
-<INPUT>
-    <SENTENCE>
-        PREMISE: Famine is bad.
-        FOL: Bad(Famine)
-    </SENTENCE>
-</INPUT>
-<OUTPUT>
-    <SENTENCE>
-        PREMISE: Famine is bad.
-        FOL: Bad(Famine)
-        <CONTEXT_SENTENCE>
-            CONTEXT: Bad is not good.
-            FOL: all x. Bad(x) -> -Good(x)
-            JUSTIFICATION: The adds context that describes the nature of antonyms.
-        </CONTEXT_SENTENCE>
-    </SENTENCE>
-</OUTPUT>
+<ANNOTATED_SENTENCE>
+    <PREMISE> Famine is bad. </PREMISE>
+    <FOL> Bad(Famine) </FOL>
+</ANNOTATED_SENTENCE>
+<ANNOTATED_SENTENCE>
+    <CONTEXT_SENTENCE>
+        <CONTEXT> Bad is not good. </CONTEXT>
+        <FOL> all x. Bad(x) -> -Good(x) </FOL>
+        <JUSTIFICATION> The context adds an understanding of the nature of antonyms. </JUSTIFICATION>
+    </CONTEXT_SENTENCE>
+</ANNOTATED_SENTENCE>
+
 """
