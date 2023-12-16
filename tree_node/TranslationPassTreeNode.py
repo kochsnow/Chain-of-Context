@@ -84,16 +84,20 @@ class TranslationPassTreeNode(TreeNode):
     #     return '\n'.join(new_lines)
 
     def expand(self):
-        self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
-        for resp in self.response:
-            translation = Translation.from_string(resp)
-            self.children.append(
-                ContextPassTreeNode(
-                    doc=self.doc, translation=translation, task_name=self.task_name, task=self.task,
-                    model=self.model, chat=self.chat
+        try:
+            self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
+            for resp in self.response:
+                translation = Translation.from_string(resp)
+                self.children.append(
+                    ContextPassTreeNode(
+                        doc=self.doc, translation=translation, task_name=self.task_name, task=self.task,
+                        model=self.model, chat=self.chat
+                    )
                 )
-            )
-        return self.children
+            return self.children
+        except Exception as e:
+            self.error = e
+            return []
 
 
 

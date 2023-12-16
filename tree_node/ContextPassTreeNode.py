@@ -49,16 +49,21 @@ class ContextPassTreeNode(TreeNode):
     """
 
     def expand(self):
-        self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
-        for resp in self.response:
-            annotated_premises = AnnotatedSentenceList.from_string(resp).sentences
-            annotated_translation = AnnotatedTranslation(annotated_premises=annotated_premises, conclusion=self.translation.conclusion)
-            self.children.append(
-                ResultTreeNode(
-                    doc=self.doc, annotated_translation=annotated_translation, task_name=self.task_name, task=self.task,
-                    model=self.model, chat=self.chat
+        try:
+            self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
+            for resp in self.response:
+                annotated_premises = AnnotatedSentenceList.from_string(resp).sentences
+                annotated_translation = AnnotatedTranslation(annotated_premises=annotated_premises, conclusion=self.translation.conclusion)
+                self.children.append(
+                    ResultTreeNode(
+                        doc=self.doc, annotated_translation=annotated_translation, task_name=self.task_name, task=self.task,
+                        model=self.model, chat=self.chat
+                    )
                 )
-            )
+        except Exception as e:
+            self.error = e
+            return []
+
         return self.children
 
 

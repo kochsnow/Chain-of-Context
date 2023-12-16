@@ -16,6 +16,7 @@ class TreeNode(ABC):
         self.task_name = task_name
         self.task = task
         self.children = []
+        self.error = None
 
     @abstractmethod
     def expand(self) -> List["TreeNode"]:
@@ -58,6 +59,9 @@ class TreeNode(ABC):
 
     def get_children_votes(self):
         votes = {"True": 0, "False": 0, "Uncertain": 0, "Error": 0}
+        if self.error:
+            votes["Error"] = 1
+            return votes
         for child in self.children:
             for vote, number in child.get_children_votes().items():
                 votes[vote] += number
