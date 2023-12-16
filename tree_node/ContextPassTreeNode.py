@@ -14,7 +14,7 @@ from .datatypes import Translation, AnnotatedTranslation, ContextSentence, Sente
 class ContextPassTreeNode(TreeNode):
     def __init__(self, doc, translation: Translation, task_name, task: OWAFOLTask, model, chat):
         super(ContextPassTreeNode, self).__init__(doc, model, task_name, task)
-        self.stop_words = task.stop_words
+        self.stop_words = task.stop_words.copy()
         self.stop_words.append("</OUTPUT>")
         self.translation = translation
         self.chat = chat

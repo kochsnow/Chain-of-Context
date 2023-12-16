@@ -10,11 +10,14 @@ datasets.logging.set_verbosity_error()
 
 load_dotenv()  # loads the api keys in .env
 
-MAX_LENGTH_GENERATION = 3000
+MAX_LENGTH_GENERATION = 2500  # todo change this
 TEMPERATURE = 0.8
 TOP_P = 0.95
-OPENAI_API_ENV_KEYS = ['OPENAI_API_KEY', 'OPENAI_API_KEY2', 'OPENAI_API_KEY3', 'OPENAI_API_KEY4', 'OPENAI_API_KEY5',
-                       'OPENAI_API_KEY6']
+# OPENAI_API_ENV_KEYS = ['OPENAI_API_KEY', 'OPENAI_API_KEY2', 'OPENAI_API_KEY3', 'OPENAI_API_KEY4', 'OPENAI_API_KEY5',
+#                        'OPENAI_API_KEY6']
+OPENAI_API_ENV_KEYS = ['OPENAI_API_KEY0', 'OPENAI_API_KEY00', 'OPENAI_API_KEY2', 'OPENAI_API_KEY3', 'OPENAI_API_KEY4', 'OPENAI_API_KEY5', 'OPENAI_API_KEY6',
+                       'OPENAI_API_KEY7']
+
 MODEL = 'gpt-4-0613'  # 'gpt-3.5-turbo-16k-0613'  # 'gpt-3.5-turbo'  # hard coded model here
 ALLOW_CODE_EXECUTION = True
 
@@ -32,8 +35,8 @@ You are a helpful assistant that carefully follows instructions.
 You should complete the user text, continuing from the example format, rather than providing a conversational response.
 """
 
-CONTEXT_PASS_N_SAMPLES = 1
-TRANSLATION_PASS_N_SAMPLES = 4
+CONTEXT_PASS_N_SAMPLES = 3
+TRANSLATION_PASS_N_SAMPLES = 1
 
 RECENT_QUERY_COUNTER = 0
 def get_next_recent_query_counter():

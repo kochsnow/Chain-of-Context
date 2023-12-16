@@ -10,6 +10,7 @@ def expand_node(node: TreeNode):
 
 def execute_tree(nodes: List[TreeNode]):
     while len(nodes) > 0:
+        print(len(nodes), 'nodes in the queue')
         with ThreadPoolExecutor() as executor:
             new_children = executor.map(expand_node, nodes)
             nodes = []
