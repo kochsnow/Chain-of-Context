@@ -50,6 +50,18 @@ class OAILLM(BaseLLM):
         self.top_p = top_p
 
     def make_request(self, prompt, stop):
+        # prompt = prompt[:10]
+        # print("PARAMS")
+        # print(self.model)
+        # print(self.n_samples)
+        # print(self.chat_system_instruction)
+        # print(self.temperature)
+        # print(self.max_length_generation)
+        # print(self.top_p)
+        # print(len(prompt))
+        # print(prompt)
+        # print(stop)
+        # print('------------------------------')
         if self.chat:
             response = openai.ChatCompletion.create(
                 model=self.model,

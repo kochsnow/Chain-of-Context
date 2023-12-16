@@ -6,7 +6,7 @@ task_name = "proofwriter-neurosymbolic-2shot"
 task = get_task(task_name)
 
 doc = task.get_dataset()[3]
-node = TranslationPassTreeNode(doc, task_name, task, model='gpt-3.5-turbo-16k-0613', chat=True)
+node = TranslationPassTreeNode(doc, task_name, task, model='gpt-3.5-turbo', chat=True)
 
 execute_tree([
     node
