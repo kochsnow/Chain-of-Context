@@ -9,10 +9,6 @@ from settings import CACHE_DIR, OPENAI_API_ENV_KEYS, TOP_P, MAX_LENGTH_GENERATIO
     SYSTEM_CHAT_INSTRUCTION, TRANSLATION_PASS_N_SAMPLES, get_next_recent_query_counter, RECENT_QUERY_DIR
 from tree_node.datatypes import Translation, Sentence, RawPremiseAndConclusion
 
-import xml.etree.ElementTree as ET
-
-from .utils import parse_xml_from_string
-
 
 class TranslationPassTreeNode(TreeNode):
     def __init__(self, doc, task_name, task: OWAFOLTask, model, chat):
@@ -54,10 +50,10 @@ class TranslationPassTreeNode(TreeNode):
             conclusion_raw = doc['conclusion']
             formatted_examples.append(f'''
 <INPUT>
+{RawPremiseAndConclusion(premises=premises_raw, conclusion=conclusion_raw).to_string()}
 </INPUT>
-{RawPremiseAndConclusion(premises=premises_raw, conclusion=conclusion_raw)}
 <OUTPUT>
-{Translation(premises=premises, conclusion=conclusion).format()}
+{Translation(premises=premises, conclusion=conclusion).to_string()}
 </OUTPUT>
             ''')
 
@@ -69,7 +65,7 @@ class TranslationPassTreeNode(TreeNode):
 {newline.join(formatted_examples)}
 
 <INPUT>
-{test.format()}
+{test.to_string()}
 </INPUT>
 <OUTPUT>
 """
@@ -89,7 +85,7 @@ class TranslationPassTreeNode(TreeNode):
     def expand(self):
         self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
         for resp in self.response:
-            translation = Translation.from_xml(parse_xml_from_string(resp))
+            translation = Translation.from_string(resp)
             self.children.append(
                 ContextPassTreeNode(
                     doc=self.doc, translation=translation, task_name=self.task_name, task=self.task,
@@ -97,3 +93,10 @@ class TranslationPassTreeNode(TreeNode):
                 )
             )
         return self.children
+
+
+
+    # # todo remove this hacky cache
+    # def make_request_and_log(self, llm: LLM, prompt, stop):
+    #     response = ['<PREMISES>\n\nPREMISE: Charlie is cold.\nFOL: Cold(Charlie)\n\n\nPREMISE: Charlie is quiet.\nFOL: Quiet(Charlie)\n\n\nPREMISE: Dave is blue.\nFOL: Blue(Dave)\n\n\nPREMISE: Dave is furry.\nFOL: Furry(Dave)\n\n\nPREMISE: Dave is nice.\nFOL: Nice(Dave)\n\n\nPREMISE: Dave is quiet.\nFOL: Quiet(Dave)\n\n\nPREMISE: Fiona is furry.\nFOL: Furry(Fiona)\n\n\nPREMISE: Fiona is quiet.\nFOL: Quiet(Fiona)\n\n\nPREMISE: Fiona is red.\nFOL: Red(Fiona)\n\n\nPREMISE: Fiona is smart.\nFOL: Smart(Fiona)\n\n\nPREMISE: Harry is cold.\nFOL: Cold(Harry)\n\n\nPREMISE: All blue things are red.\nFOL: all x. (Blue(x) -> Red(x))\n\n\nPREMISE: Blue, nice things are quiet.\nFOL: all x. (Blue(x) & Nice(x) -> Quiet(x))\n\n\nPREMISE: If Harry is quiet then Harry is furry.\nFOL: all x. (Quiet(x) -> Furry(x))\n\n\nPREMISE: If Charlie is smart and Charlie is cold then Charlie is furry.\nFOL: all x. (Smart(x) & Cold(x) -> Furry(x))\n\n\nPREMISE: If something is furry then it is nice.\nFOL: all x. (Furry(x) -> Nice(x))\n\n\nPREMISE: Red, quiet things are smart.\nFOL: all x. (Red(x) & Quiet(x) -> Smart(x))\n\n\nPREMISE: Nice things are smart.\nFOL: all x. (Nice(x) -> Smart(x))\n\n\nPREMISE: Quiet things are blue.\nFOL: all x. (Quiet(x) -> Blue(x))\n\n</PREMISES>\n<CONCLUSION>\n\nPREMISE: Charlie is smart.\nFOL: Smart(Charlie)\n\n<CONCLUSION>\n\n']
+    #     return response

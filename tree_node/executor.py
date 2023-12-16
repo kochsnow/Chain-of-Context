@@ -4,7 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def expand_node(node: TreeNode):
-    return node.expand()
+    result = node.expand()
+    return result
 
 
 def execute_tree(nodes: List[TreeNode]):

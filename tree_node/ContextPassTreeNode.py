@@ -8,8 +8,7 @@ from settings import CACHE_DIR, OPENAI_API_ENV_KEYS, TOP_P, MAX_LENGTH_GENERATIO
     SYSTEM_CHAT_INSTRUCTION, CONTEXT_PASS_N_SAMPLES, get_next_recent_query_counter, RECENT_QUERY_DIR
 from .ResultPassTreeNode import ResultTreeNode
 from .datatypes import Translation, AnnotatedTranslation, ContextSentence, Sentence, AnnotatedSentence, SentenceList, \
-    AnnotatedSentenceList
-from .utils import parse_xml_from_string
+    AnnotatedSentenceList, AnnotatedSentence
 
 
 class ContextPassTreeNode(TreeNode):
@@ -37,14 +36,14 @@ class ContextPassTreeNode(TreeNode):
 {CONTEXT_PROMPT_INSTRUCTION}
 
 <INPUT>
-{example_input_1.format()}
+{example_input_1.to_string()}
 </INPUT>
 <OUTPUT>
-{example_output_1.format()}
+{example_output_1.to_string()}
 </OUTPUT>
 
 <INPUT>
-{SentenceList(sentences=self.translation.premises).format()}
+{SentenceList(sentences=self.translation.premises).to_string()}
 </INPUT>
 <OUTPUT>
     """
@@ -52,7 +51,7 @@ class ContextPassTreeNode(TreeNode):
     def expand(self):
         self.response = self.make_request_and_log(llm=self.llm, prompt=self.get_prompt(), stop=self.stop_words)
         for resp in self.response:
-            annotated_premises = AnnotatedSentenceList.from_xml(parse_xml_from_string(resp))
+            annotated_premises = AnnotatedSentenceList.from_string(resp).sentences
             annotated_translation = AnnotatedTranslation(annotated_premises=annotated_premises, conclusion=self.translation.conclusion)
             self.children.append(
                 ResultTreeNode(
@@ -61,6 +60,11 @@ class ContextPassTreeNode(TreeNode):
                 )
             )
         return self.children
+
+
+    # # todo remove this hacky cache
+    # def make_request_and_log(self, llm: LLM, prompt, stop):
+    #     return ['{\n    "sentences": [\n        {\n            "sentence": {\n                "premise": "Charlie is cold.",\n                "fol": "Cold(Charlie)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Charlie is quiet.",\n                "fol": "Quiet(Charlie)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Dave is blue.",\n                "fol": "Blue(Dave)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Dave is furry.",\n                "fol": "Furry(Dave)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Dave is nice.",\n                "fol": "Nice(Dave)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Dave is quiet.",\n                "fol": "Quiet(Dave)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Fiona is furry.",\n                "fol": "Furry(Fiona)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Fiona is quiet.",\n                "fol": "Quiet(Fiona)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Fiona is red.",\n                "fol": "Red(Fiona)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Fiona is smart.",\n                "fol": "Smart(Fiona)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Harry is cold.",\n                "fol": "Cold(Harry)"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "All blue things are red.",\n                "fol": "all x. (Blue(x) -> Red(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Blue, nice things are quiet.",\n                "fol": "all x. ((Blue(x) & Nice(x)) -> Quiet(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "If Harry is quiet then Harry is furry.",\n                "fol": "all x. (Quiet(x) -> Furry(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "If Charlie is smart and Charlie is cold then Charlie is furry.",\n                "fol": "all x. (Smart(x) & Cold(x) -> Furry(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "If something is furry then it is nice.",\n                "fol": "all x. (Furry(x) -> Nice(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Red, quiet things are smart.",\n                "fol": "all x. ((Red(x) & Quiet(x)) -> Smart(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Nice things are smart.",\n                "fol": "all x. (Nice(x) -> Smart(x))"\n            },\n            "contexts": []\n        },\n        {\n            "sentence": {\n                "premise": "Quiet things are blue.",\n                "fol": "all x. (Quiet(x) -> Blue(x))"\n            },\n            "contexts": []\n        }\n    ]\n}']
 
 
 CONTEXT_PROMPT_INSTRUCTION = f"""You will be given the premises for a first-order logic (FOL) problem.
@@ -75,39 +79,50 @@ Do not limit the amount of new premises generated in the output.
 Expressions should be adhere to the format of the Python NLTK package logic module. Here are a couple examples:
 """
 
-example_input_1 = SentenceList.from_xml(parse_xml_from_string("""
-<SENTENCE>
-    <PREMISE> When a person reads a book, that person gains knowledge. </PREMISE>
-    <FOL> all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge)) </FOL>
-</SENTENCE>
-<SENTENCE>
-    <PREMISE> Harry read the book "Walden" by Henry. </PREMISE>
-    <FOL> Reads(Harry, Walden) </FOL>
-</SENTENCE>
-        """))
+example_input_1 = SentenceList(
+    sentences=[
+        Sentence(
+            premise="When a person reads a book, that person gains knowledge.",
+            fol="all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge))"
+        ),
+        Sentence(
+            premise='Harry read the book "Walden" by Henry.',
+            fol='Reads(Harry, Walden)'
+        )
+    ]
+)
 
-example_output_1 = AnnotatedSentenceList.from_xml(parse_xml_from_string("""
-<ANNOTATED_SENTENCE>
-    <PREMISE> When a person reads a book, that person gains knowledge. </PREMISE>
-    <FOL> all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge)) </FOL>
-</ANNOTATED_SENTENCE>
-<ANNOTATED_SENTENCE>
-    <PREMISE> Harry read the book "Walden" by Henry. </PREMISE>
-    <FOL> Reads(Harry, Walden) </FOL>
-    <CONTEXT_SENTENCE>
-        <CONTEXT> Harry is a person. </CONTEXT>
-        <FOL> Person(Harry) </FOL>
-        <JUSTIFICATION> Harry is a person's name - this categorizes proper nouns. </JUSTIFICATION>
-    </CONTEXT_SENTENCE>
-    <CONTEXT_SENTENCE>
-        <CONTEXT> Walden is a book. </CONTEXT> 
-        <FOL> Book(Walden) </FOL>
-        <JUSTIFICATION> The text says 'the book "Walden"', so Walden is a book's name - this categorizes proper nouns.  </JUSTIFICATION>
-    </CONTEXT_SENTENCE>
-</ANNOTATED_SENTENCE>
-"""))
+example_output_1 = AnnotatedSentenceList(
+    sentences=[
+        AnnotatedSentence(
+            Sentence(
+                premise="When a person reads a book, that person gains knowledge.",
+                fol="all x. all y. (Person(x) & Reads(x, y) & Book(y) -> Gains(x, Knowledge))"
+            ),
+            contexts=[]
+        ),
+        AnnotatedSentence(
+            Sentence(
+                premise='Harry read the book "Walden" by Henry.',
+                fol='Reads(Harry, Walden)'
+            ),
+            contexts=[
+                ContextSentence(
+                    context="Harry is a person.",
+                    fol="Person(Harry)",
+                    justification="Harry is a person's name - this categorizes proper nouns."
+                ),
+                ContextSentence(
+                    context="Walden is a book.",
+                    fol="Book(Walden)",
+                    justification="""The text says 'the book "Walden"', so Walden is a book's name - this categorizes proper nouns."""
+                )
+            ]
+        )
+    ]
+)
 
-
+# todo add this
 """
 <ANNOTATED_SENTENCE>
     <PREMISE> Heinrich Schmidt was a Nazi German politician. </PREMISE>

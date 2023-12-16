@@ -34,7 +34,6 @@ class TreeNode(ABC):
             data = {"prompt": prompt, "stop": stop, "response": response}
             json.dump(data, fp)
         with open(filenametxt, "w") as fp:
-            data = {"prompt": prompt, "stop": stop, "response": response}
             fp.write("stop words:\n")
             fp.write(str(stop))
             fp.write('\n')
@@ -47,6 +46,7 @@ class TreeNode(ABC):
             fp.write('\n')
             fp.write("response:\n")
             fp.write(str(response))
+            print(response)
         print('finished query')
         return response
 
@@ -59,6 +59,6 @@ class TreeNode(ABC):
     def get_children_votes(self):
         votes = {"True": 0, "False": 0, "Uncertain": 0, "Error": 0}
         for child in self.children:
-            for vote, number in child.get_children_votes():
+            for vote, number in child.get_children_votes().items():
                 votes[vote] += number
         return votes

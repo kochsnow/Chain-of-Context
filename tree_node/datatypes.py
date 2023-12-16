@@ -1,179 +1,216 @@
-import xml.etree.ElementTree as ET
-
+import json
 from dataclasses import dataclass
 from typing import List
+# import marshmallow_dataclass
+# import marshmallow.validate
+
+
+class JSONWizard:
+    pass
+    # def to_string(self):
+    #     schema = marshmallow_dataclass.class_schema(self.__class__)()
+    #     return schema.dump(self)
+    #     # return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+    #
+    # @classmethod
+    # def from_string(cls, json_str):
+    #     schema = marshmallow_dataclass.class_schema(cls)()
+    #     json_str = json_str.replace('\'', '"')
+    #     json_dict = json.loads(json_str)
+    #     return schema.load(json_dict)
+    #     # return cls(**json_dict)
 
 
 @dataclass
-class SentenceList:
+class SentenceList(JSONWizard):
     sentences: List["Sentence"]
 
-    def format(self):
-        new_line = '\n'
-        return new_line.join([p.format() for p in self.sentences])
+    def to_string(self):
+        return "\n".join([
+            f'''<SENTENCE>
+{s.to_string()}
+</SENTENCE>'''
+
+            for s in self.sentences
+        ])
 
     @staticmethod
-    def from_xml(root):
+    def from_string(text):
         return SentenceList(
-            sentences=[Sentence.from_xml(p) for p in root.findall("SENTENCE")]
+            sentences=[Sentence.from_string(p) for p in get_blocks_of(text, "SENTENCE")]
         )
 
 
 @dataclass
-class AnnotatedSentenceList:
+class AnnotatedSentenceList(JSONWizard):
     sentences: List["AnnotatedSentence"]
 
-    def format(self):
-        new_line = '\n'
-        return new_line.join([p.format() for p in self.sentences])
+    def to_string(self):
+        return "\n".join([
+            f'''<ANNOTATED_SENTENCE>
+{s.to_string()}
+</ANNOTATED_SENTENCE>'''
+            for s in self.sentences
+        ])
 
     @staticmethod
-    def from_xml(root):
-        return SentenceList(
-            sentences=[Sentence.from_xml(p) for p in root.findall("ANNOTATED_SENTENCE")]
+    def from_string(text):
+        return AnnotatedSentenceList(
+            sentences=[AnnotatedSentence.from_string(p) for p in get_blocks_of(text, "ANNOTATED_SENTENCE")]
         )
 
 
 @dataclass
-class RawPremiseAndConclusion:
+class RawPremiseAndConclusion(JSONWizard):
     premises: List[str]
     conclusion: str
 
-    def format(self):
-        new_line = '\n'
+    def to_string(self):
+        newline = '\n'
         return f"""
-<RAW_PREMISE_AND_CONCLUSION>
-    {new_line.join(f'<PREMISE>{p}</PREMISE>' for p in self.premises)}
-    <CONCLUSION>{self.conclusion}</CONCLUSION>
-</RAW_PREMISE_AND_CONCLUSION>
+<PREMISES>
+{newline.join(self.premises)}
+</PREMISES>
+<CONCLUSION>
+{self.conclusion}
+</CONCLUSION>
 """
 
     @staticmethod
-    def from_xml(root):
+    def from_string(text):
+        premises_lines = get_blocks_of(text, "PREMISES")[0].split('\n')
+        conclusion = get_blocks_of(text, "CONCLUSION")[0]
         return RawPremiseAndConclusion(
-            premises=[p.text for p in root.findall("PREMISE").text],
-            conclusion=root.find("CONCLUSION").text
+            premises=[line.strip() for line in premises_lines if line.strip()],
+            conclusion=conclusion.strip()
         )
 
 
 @dataclass
-class Sentence:
+class Sentence(JSONWizard):
     premise: str
     fol: str
 
-    def format(self):
+    def to_string(self):
         return f"""
-<SENTENCE>
-    <PREMISE>{self.premise}</PREMISE>
-    <FOL>{self.fol}</FOL>
-</SENTENCE>
+PREMISE: {self.premise}
+FOL: {self.fol}
 """
 
     @staticmethod
-    def from_xml(root):
+    def from_string(text):
         return Sentence(
-            premise=root.find("PREMISE").text,
-            fol=root.find("FOL").text
+            premise=get_variable(text, "PREMISE"),
+            fol=get_variable(text, "FOL"),
         )
 
 
 @dataclass
-class ContextSentence:
+class ContextSentence(JSONWizard):
     context: str
     fol: str
     justification: str
 
-    def format(self):
+    def to_string(self):
         return f"""
-<CONTEXT_SENTENCE>
-    <CONTEXT>{self.context}</CONTEXT>
-    <FOL>{self.fol}</FOL>
-    <JUSTIFICATION>{self.justification}</JUSTIFICATION>
-</CONTEXT_SENTENCE>
+CONTEXT: {self.context}
+FOL: {self.fol}
+JUSTIFICATION: {self.justification}
 """
 
     @staticmethod
-    def from_xml(root):
+    def from_string(text):
         return ContextSentence(
-            context=root.find("CONTEXT").text,
-            fol=root.find("FOL").text,
-            justification=root.find("JUSTIFICATION").text
+            context=get_variable(text, "CONTEXT"),
+            fol=get_variable(text, "FOL"),
+            justification=get_variable(text, "JUSTIFICATION")
         )
 
 
 @dataclass
-class Translation:
+class Translation(JSONWizard):
     premises: List[Sentence]
     conclusion: Sentence
 
-    def format(self):
+    def to_string(self):
         newline = '\n'
         return f"""
-<TRANSLATION>
-    <PREMISES>
-    {newline.join([p.format() for p in self.premises])}
-    </PREMISES>
-    <CONCLUSION>
-    {self.conclusion.format()}
-    </CONCLUSION>
-</TRANSLATION>
+<PREMISES>
+{newline.join([p.to_string() for p in self.premises])}
+</PREMISES>
+<CONCLUSION>
+{self.conclusion.to_string()}
+<CONCLUSION>
 """
 
     @staticmethod
-    def from_xml(root):
-        premises = root.find("PREMISES")
-        conclusion = root.find("CONCLUSION")
+    def from_string(text):
+        lines = get_blocks_of(text, "PREMISES")[0].split('\n')
+        lines = [line.strip() for line in lines if line.strip()]
         return Translation(
-            premises=[Sentence.from_xml(p) for p in premises],
-            conclusion=Sentence.from_xml(conclusion)
+            premises=[Sentence.from_string(lines[i] + "\n" + lines[i+1]) for i in range(0, len(lines), 2)],
+            conclusion=Sentence.from_string(get_blocks_of(text, "CONCLUSION")[0])
         )
 
 
 @dataclass
-class AnnotatedSentence:
+class AnnotatedSentence(JSONWizard):
     sentence: Sentence
     contexts: List[ContextSentence]
 
-    def format(self):
-        newline = '\n'
+    def to_string(self):
+        newline = "\n"
         return f"""
-    <ANNOTATED_SENTENCE>
-        {self.sentence.format()}
-        {newline.join([c.format() for c in self.contexts])}
-    </ANNOTATED_SENTENCE>
+<SENTENCE>
+{self.sentence.to_string()}
+</SENTENCE>
+{newline.join([
+f'''<EXTRA_CONTEXT>
+{context.to_string()}
+</EXTRA_CONTEXT>''' for context in self.contexts])}
 """
 
     @staticmethod
-    def from_xml(root):
-        sentence = root.find("SENTENCE")
-        contexts = root.findall("CONTEXT_SENTENCE")
+    def from_string(text):
         return AnnotatedSentence(
-            sentence=Sentence.from_xml(sentence),
-            contexts=[ContextSentence.from_xml(c) for c in contexts]
+            sentence=Sentence.from_string(get_blocks_of(text, "SENTENCE")[0]),
+            contexts=[ContextSentence.from_string(b) for b in get_blocks_of(text, "EXTRA_CONTEXT")]
         )
 
 
 @dataclass
-class AnnotatedTranslation:
+class AnnotatedTranslation(JSONWizard):
     annotated_premises: List[AnnotatedSentence]
     conclusion: Sentence
 
-    def format(self):
+    def to_string(self):
         newline = '\n'
         return f"""
-    <ANNOTATED_TRANSLATION>
-        <ANNOTATED_PREMISES>
-        {newline.join(AnnotatedSentence.format(p) for p in self.annotated_premises)}
-        </ANNOTATED_PREMISES>
-        <CONCLUSION>
-        {self.conclusion.format()}
-        </CONCLUSION>
-    </ANNOTATED_TRANSLATION>
-    """
+<ANNOTATED_PREMISES>
+{newline.join([p.to_string() for p in self.annotated_premises])}
+</ANNOTATED_PREMISES>
+<CONCLUSION>
+{self.conclusion.to_string()}
+<CONCLUSION>
+"""
 
     @staticmethod
-    def from_xml(root):
+    def from_string(text):
         return AnnotatedTranslation(
-            annotated_premises=[AnnotatedSentence.from_xml(p) for p in root.find("ANNOTATED_PREMISES").findall("ANNOTATED_SENTENCE")],
-            conclusion=Sentence.from_xml(root.find("CONCLUSION"))
+            annotated_premises=[AnnotatedSentence.from_string(b) for b in get_blocks_of(text, "ANNOTATED_PREMISES")],
+            conclusion=Sentence.from_string(get_blocks_of(text, "CONCLUSION")[0])
         )
+
+
+def get_blocks_of(text, tag):
+    res = []
+    for block in text.split(f"<{tag}>")[1:]:
+        res.append(block.split(f"</{tag}>")[0])
+    return res
+
+
+def get_variable(text, tag):
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.lower().startswith(tag.lower()):
+            return ":".join(line.split(":")[1:])
